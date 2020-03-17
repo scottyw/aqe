@@ -7,32 +7,23 @@ import (
 	"time"
 )
 
+type generator func(r *rand.Rand) (string, int)
+
 func main() {
 
-	questions, answers := generate(p4, 20)
-
-	fmt.Println("------------------------------------------------")
-	fmt.Println("Questions")
-	fmt.Println("------------------------------------------------")
-	fmt.Println("")
+	questions, answers := generate(p6, 20)
 
 	for i, q := range questions {
 		fmt.Printf("Q%d: %s\n\n", i+1, q)
 	}
 
-	fmt.Println("")
-	fmt.Println("------------------------------------------------")
-	fmt.Println("Answers")
-	fmt.Println("------------------------------------------------")
-	fmt.Println("")
-
 	for i, a := range answers {
-		fmt.Printf("Q%d: %d\n\n", i+1, a)
+		fmt.Printf("A%d: %d \t[%s]\n\n", i+1, a, questions[i])
 	}
 
 }
 
-func generate(qs []func(r *rand.Rand) (string, int), count int) ([]string, []int) {
+func generate(qs []generator, count int) ([]string, []int) {
 	questions := make([]string, count)
 	answers := make([]int, count)
 
@@ -48,41 +39,52 @@ func generate(qs []func(r *rand.Rand) (string, int), count int) ([]string, []int
 	return questions, answers
 }
 
-func generateRandomQuestion(r *rand.Rand, qs []func(r *rand.Rand) (string, int)) (string, int) {
+func generateRandomQuestion(r *rand.Rand, qs []generator) (string, int) {
 	return qs[r.Intn(len(qs))](r)
 }
 
-var p6 = []func(r *rand.Rand) (string, int){
-	generateMultiplication2,
-	generateAddition1,
-	generateAddition2,
-	generateSubtraction2,
-	generateDivision,
+//
+// Generator sets
+//
+
+var p6 = []generator{
+	generateMultiplication(2, 2),
+	generateMultiplication(3, 2),
+	generateAdditionWithZeros,
+	generateAdditionTriple(3, 2, 2),
+	generateAdditionTriple(3, 3, 2),
+	generateSubtraction(4, 4),
+	generateSubtraction(4, 5),
+	generateSubtraction(5, 5),
+	generateDivision(50),
+	generateDivision(99),
 }
 
-var p4 = []func(r *rand.Rand) (string, int){
-	generateMultiplication1,
-	generateAddition3,
-	generateSubtraction1,
+var p4 = []generator{
+	generateMultiplication(2, 1),
+	generateMultiplication(3, 1),
+	generateAddition(3, 2),
+	generateAddition(3, 3),
+	generateSubtraction(3, 2),
+	generateSubtraction(3, 3),
+	generateDivision(12),
 }
 
-func generateMultiplication1(r *rand.Rand) (string, int) {
-	x := n(r, 3)
-	y := n(r, 1)
-	q := fmt.Sprintf("Multiply %d by %d.", x, y)
-	a := x * y
-	return q, a
+//
+// Problem generators
+//
+
+func generateMultiplication(xl, yl int) generator {
+	return func(r *rand.Rand) (string, int) {
+		x := n(r, xl)
+		y := n(r, yl)
+		q := fmt.Sprintf("Multiply %d and %d.", x, y)
+		a := x * y
+		return q, a
+	}
 }
 
-func generateMultiplication2(r *rand.Rand) (string, int) {
-	x := n(r, 3)
-	y := n(r, 2)
-	q := fmt.Sprintf("Multiply %d and %d.", x, y)
-	a := x * y
-	return q, a
-}
-
-func generateAddition1(r *rand.Rand) (string, int) {
+func generateAdditionWithZeros(r *rand.Rand) (string, int) {
 	w := n(r, 2) * 1000
 	x := n(r, 2) * 100
 	y := n(r, 2) * 10
@@ -92,55 +94,50 @@ func generateAddition1(r *rand.Rand) (string, int) {
 	return q, a
 }
 
-func generateAddition2(r *rand.Rand) (string, int) {
-	x := n(r, 3)
-	y := n(r, 3)
-	z := n(r, 2)
-	q := fmt.Sprintf("Add %d, %d and %d.", x, y, z)
-	a := x + y + z
-	return q, a
-}
-
-func generateAddition3(r *rand.Rand) (string, int) {
-	x := n(r, 3)
-	y := n(r, 3)
-	q := fmt.Sprintf("Add %d and %d.", x, y)
-	a := x + y
-	return q, a
-}
-
-func generateSubtraction1(r *rand.Rand) (string, int) {
-	x := n(r, 3)
-	y := n(r, 3)
-	if x > y {
-		tmp := y
-		y = x
-		x = tmp
+func generateAddition(xl, yl int) generator {
+	return func(r *rand.Rand) (string, int) {
+		x := n(r, xl)
+		y := n(r, yl)
+		q := fmt.Sprintf("Add %d and %d.", x, y)
+		a := x + y
+		return q, a
 	}
-	q := fmt.Sprintf("Subtract %d from %d.", x, y)
-	a := y - x
-	return q, a
 }
 
-func generateSubtraction2(r *rand.Rand) (string, int) {
-	x := n(r, 5)
-	y := n(r, 5)
-	if x > y {
-		tmp := y
-		y = x
-		x = tmp
+func generateAdditionTriple(xl, yl, zl int) generator {
+	return func(r *rand.Rand) (string, int) {
+		x := n(r, xl)
+		y := n(r, yl)
+		z := n(r, zl)
+		q := fmt.Sprintf("Add %d, %d and %d.", x, y, z)
+		a := x + y + z
+		return q, a
 	}
-	q := fmt.Sprintf("Subtract %d from %d.", x, y)
-	a := y - x
-	return q, a
 }
 
-func generateDivision(r *rand.Rand) (string, int) {
-	x := r.Intn(10) + 11
-	y := r.Intn(40) + 11
-	q := fmt.Sprintf("Divide %d by %d.", x*y, x)
-	a := y
-	return q, a
+func generateSubtraction(xl, yl int) generator {
+	return func(r *rand.Rand) (string, int) {
+		x := n(r, xl)
+		y := n(r, yl)
+		if x > y {
+			tmp := y
+			y = x
+			x = tmp
+		}
+		q := fmt.Sprintf("Subtract %d from %d.", x, y)
+		a := y - x
+		return q, a
+	}
+}
+
+func generateDivision(max int) generator {
+	return func(r *rand.Rand) (string, int) {
+		x := r.Intn(12) + 1      // 1-12
+		y := r.Intn(max-10) + 11 // 11-50
+		q := fmt.Sprintf("Divide %d by %d.", x*y, x)
+		a := y
+		return q, a
+	}
 }
 
 // Generate a random number that is N digits long
